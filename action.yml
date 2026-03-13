@@ -55,6 +55,17 @@ runs:
           echo "MCP_CONFIG_PATH=/tmp/elementary-mcp.json" >> $GITHUB_ENV
         fi
 
+    - name: Debug MCP connectivity
+      shell: bash
+      run: |
+        echo "=== MCP config (token redacted) ==="
+        cat "${MCP_CONFIG_PATH}" | sed 's/Bearer [^""]*/Bearer ***/'
+        echo ""
+        echo "=== Connectivity check ==="
+        curl -s -o /dev/null -w "HTTP %{http_code}" \
+          -H "Authorization: Bearer ${{ inputs.elementary-api-key }}" \
+          https://mcp.elementary-data.com/sse || true
+
     - name: Run Elementary review
       shell: bash
       env:
