@@ -1,0 +1,72 @@
+name: Elementary Data Quality Review
+description: >
+  Queries the Elementary MCP server for data quality context on changed dbt models
+  and posts a summary comment to the GitHub Pull Request.
+author: Elementary Data
+
+branding:
+  icon: shield
+  color: blue
+
+inputs:
+  anthropic-api-key:
+    description: Anthropic API key for Claude
+    required: true
+  models-path:
+    description: Path to the dbt models directory relative to repo root
+    default: "models/"
+  diff-filter:
+    description: >
+      git diff --diff-filter value.
+      ACM = Added, Copied, Modified (excludes deleted models).
+    default: "ACM"
+  edr-version:
+    description: Pin to a specific elementary-data version, e.g. "0.15.0". Empty = latest.
+    default: ""
+  mcp-config-path:
+    description: Path to the MCP config file (.mcp.json)
+    default: ".mcp.json"
+  claude-model:
+    description: >
+      Claude model ID to use.
+      See https://docs.anthropic.com/en/docs/about-claude/models for available models.
+    default: "claude-haiku-4-5-20251001"
+  base-ref:
+    description: Base branch to diff against. Defaults to the PR base branch.
+    default: ${{ github.base_ref }}
+
+runs:
+  using: composite
+  steps:
+    - name: Install dependencies
+      shell: bash
+      run: |
+        # elementary-data provides the edr binary
+        if [ -n "${{ inputs.edr-version }}" ]; then
+          pip install --quiet "elementary-data==${{ inputs.edr-version }}"
+        else
+          pip install --quiet elementary-data
+        fi
+        npm install -g @anthropic-ai/claude-code
+
+    - name: Run Elementary review
+      shell: bash
+      env:
+        ANTHROPIC_API_KEY: ${{ inputs.anthropic-api-key }}
+      run: |
+        DIFF=$(git diff \
+          --diff-filter=${{ inputs.diff-filter }} \
+          origin/${{ inputs.base-ref }}...HEAD \
+          -- ${{ inputs.models-path }})
+
+        export DIFF
+        export COMMENT_MARKER="<!-- elementary-mr-review -->"
+        export POST_COMMENT_URL="https://api.github.com/repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments"
+        export LIST_COMMENTS_URL="https://api.github.com/repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments"
+        export UPDATE_COMMENT_URL_TPL="https://api.github.com/repos/${{ github.repository }}/issues/comments/{id}"
+        export AUTH_HEADER_NAME="Authorization"
+        export AUTH_HEADER_VALUE="Bearer ${{ github.token }}"
+        export MCP_CONFIG_PATH="${{ inputs.mcp-config-path }}"
+        export CLAUDE_MODEL="${{ inputs.claude-model }}"
+
+        bash "${{ github.action_path }}/scripts/review.sh"
