@@ -50,7 +50,7 @@ runs:
         if [ -n "${{ inputs.mcp-config-path }}" ]; then
           echo "MCP_CONFIG_PATH=${{ inputs.mcp-config-path }}" >> $GITHUB_ENV
         else
-          printf '{"mcpServers":{"elementary":{"url":"https://mcp.elementary-data.com/sse","headers":{"Authorization":"Bearer %s"}}}}\n' \
+          printf '{"mcpServers":{"elementary":{"type":"sse","url":"https://mcp.elementary-data.com/sse","headers":{"Authorization":"Bearer %s"}}}}\n' \
             "${{ inputs.elementary-api-key }}" > /tmp/elementary-mcp.json
           echo "MCP_CONFIG_PATH=/tmp/elementary-mcp.json" >> $GITHUB_ENV
         fi
