@@ -20,7 +20,11 @@ if [ -z "${DIFF:-}" ]; then
   exit 0
 fi
 
-MCP_CONFIG_PATH="${MCP_CONFIG_PATH:-.mcp.json}"
+if [ -z "${MCP_CONFIG_PATH:-}" ]; then
+  echo "ERROR: MCP_CONFIG_PATH is not set." >&2
+  exit 1
+fi
+
 CLAUDE_MODEL="${CLAUDE_MODEL:-claude-haiku-4-5-20251001}"
 
 claude -p "
