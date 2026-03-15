@@ -22,7 +22,7 @@ inputs:
     description: >
       git diff --diff-filter value.
       ACM = Added, Copied, Modified (excludes deleted models).
-    default: "ACM"
+    default: "ACMR"
   claude-model:
     description: >
       Claude model ID to use.

@@ -27,7 +27,7 @@ elementary-mr-review:
   script:
     - |
       MODELS_PATH="${ELEMENTARY_CI_MODELS_PATH:-models/}"
-      DIFF_FILTER="${ELEMENTARY_CI_DIFF_FILTER:-ACM}"
+      DIFF_FILTER="${ELEMENTARY_CI_DIFF_FILTER:-ACMR}"
 
       git fetch origin "${CI_MERGE_REQUEST_TARGET_BRANCH_NAME}"
 
