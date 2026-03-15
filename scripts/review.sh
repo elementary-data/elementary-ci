@@ -10,7 +10,7 @@
 #   UPDATE_COMMENT_URL_TPL   URL template for updating a comment, with {id} placeholder
 #   AUTH_HEADER_NAME         Header name:  "Authorization"  (GitHub) | "PRIVATE-TOKEN" (GitLab)
 #   AUTH_HEADER_VALUE        Header value: "Bearer <token>" (GitHub) | "<token>"       (GitLab)
-#   MCP_CONFIG_PATH          Path to .mcp.json (default: .mcp.json)
+#   MCP_CONFIG_PATH          Path to .mcp.json
 #   CLAUDE_MODEL             Claude model ID to use (default: claude-haiku-4-5-20251001)
 
 set -euo pipefail
@@ -26,7 +26,9 @@ if [ -z "${MCP_CONFIG_PATH:-}" ]; then
 fi
 
 CLAUDE_MODEL="${CLAUDE_MODEL:-claude-haiku-4-5-20251001}"
+COMMENT_FILE="/tmp/elementary-comment.md"
 
+# Step 1: Claude generates the comment and writes it to a file
 claude -p "
 You are a data quality reviewer for a pull/merge request.
 
@@ -41,36 +43,83 @@ Using the Elementary MCP tools available to you:
 3. Get downstream lineage (depth 2) to assess blast radius of changes
 4. Summarize overall model health
 
-After gathering context, post a single comment via the API.
+Write a Markdown comment summarising your findings to the file: ${COMMENT_FILE}
 
-Step 1 - check for an existing Elementary comment (idempotency):
-  GET ${LIST_COMMENTS_URL}
-  ${AUTH_HEADER_NAME}: ${AUTH_HEADER_VALUE}
-
-  Search the response for any comment whose body contains exactly: ${COMMENT_MARKER}
-  Note its id if found.
-
-Step 2 - post or update the comment:
-  If a matching comment was found:
-    PATCH/PUT ${UPDATE_COMMENT_URL_TPL}   (replace {id} with the found comment id)
-  Otherwise:
-    POST ${POST_COMMENT_URL}
-
-  In both cases:
-    ${AUTH_HEADER_NAME}: ${AUTH_HEADER_VALUE}
-    Content-Type: application/json
-    Body: {\"body\": \"<your markdown comment>\"}
-
-Format requirements for the comment body:
+Format requirements:
 - First line must be exactly: ${COMMENT_MARKER}
-- Use Markdown with a clear section per changed model
-- Include a test pass/fail count table per model where data is available
-- Call out downstream impact (which models/dashboards are affected)
+- Use proper Markdown with newlines between each section and list item
+- Use ## headings for each section
+- Use bullet points with a blank line between groups
+- Include a test pass/fail table per model where data is available
+- Call out downstream impact clearly
 - If a model has no Elementary history yet, say so explicitly
 - If the MCP server is unreachable, say so rather than omitting the section
 - End with: _Posted by [Elementary CI](https://www.elementary-data.com)_
+
+Only write the file. Do not post to any API.
 " \
   --mcp-config "${MCP_CONFIG_PATH}" \
   --model "${CLAUDE_MODEL}" \
-  --allowedTools "mcp__elementary__*,Bash" \
+  --allowedTools "mcp__elementary__*,Bash(cat:*,echo:*,tee:*,printf:*)" \
   --output-format text
+
+if [ ! -f "${COMMENT_FILE}" ]; then
+  echo "ERROR: Claude did not write the comment file." >&2
+  exit 1
+fi
+
+# Step 2: Post or update the comment via the API using Python for correct JSON encoding
+python3 - <<PYEOF
+import json, os, urllib.request, urllib.error
+
+comment_file = "${COMMENT_FILE}"
+post_url = "${POST_COMMENT_URL}"
+list_url = "${LIST_COMMENTS_URL}"
+update_tpl = "${UPDATE_COMMENT_URL_TPL}"
+auth_header_name = "${AUTH_HEADER_NAME}"
+auth_header_value = "${AUTH_HEADER_VALUE}"
+marker = "${COMMENT_MARKER}"
+
+with open(comment_file) as f:
+    body = f.read().strip()
+
+headers = {
+    auth_header_name: auth_header_value,
+    "Content-Type": "application/json",
+}
+
+def api(method, url, data=None):
+    req = urllib.request.Request(url, method=method, headers=headers,
+                                  data=json.dumps(data).encode() if data else None)
+    try:
+        resp = urllib.request.urlopen(req)
+        return json.loads(resp.read())
+    except urllib.error.HTTPError as e:
+        print(f"HTTP {e.code} {method} {url}: {e.read().decode()}")
+        raise
+
+# Find existing Elementary comment
+existing_id = None
+page = 1
+while True:
+    notes = api("GET", f"{list_url}?per_page=100&page={page}")
+    if not notes:
+        break
+    for note in notes:
+        if marker in note.get("body", ""):
+            existing_id = note["id"]
+            break
+    if existing_id or len(notes) < 100:
+        break
+    page += 1
+
+if existing_id:
+    url = update_tpl.replace("{id}", str(existing_id))
+    # GitHub uses PATCH, GitLab uses PUT
+    method = "PUT" if "${AUTH_HEADER_NAME}" == "PRIVATE-TOKEN" else "PATCH"
+    result = api(method, url, {"body": body})
+    print(f"Updated existing comment (id: {existing_id})")
+else:
+    result = api("POST", post_url, {"body": body})
+    print(f"Posted new comment (id: {result.get('id')})")
+PYEOF
