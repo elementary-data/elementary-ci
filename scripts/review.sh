@@ -116,7 +116,7 @@ while True:
 if existing_id:
     url = update_tpl.replace("{id}", str(existing_id))
     # GitHub uses PATCH, GitLab uses PUT
-    method = "PUT" if "${AUTH_HEADER_NAME}" == "PRIVATE-TOKEN" else "PATCH"
+    method = "PUT" if "${AUTH_HEADER_NAME}" == "JOB-TOKEN" else "PATCH"
     result = api(method, url, {"body": body})
     print(f"Updated existing comment (id: {existing_id})")
 else:
