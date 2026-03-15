@@ -12,6 +12,9 @@ inputs:
   anthropic-api-key:
     description: Anthropic API key for Claude
     required: true
+  elementary-api-key:
+    description: Elementary Cloud API key
+    required: true
   models-path:
     description: Path to the dbt models directory relative to repo root
     default: "models/"
@@ -20,12 +23,6 @@ inputs:
       git diff --diff-filter value.
       ACM = Added, Copied, Modified (excludes deleted models).
     default: "ACM"
-  edr-version:
-    description: Pin to a specific elementary-data version, e.g. "0.15.0". Empty = latest.
-    default: ""
-  mcp-config-path:
-    description: Path to the MCP config file (.mcp.json)
-    default: ".mcp.json"
   claude-model:
     description: >
       Claude model ID to use.
@@ -34,20 +31,40 @@ inputs:
   base-ref:
     description: Base branch to diff against. Defaults to the PR base branch.
     default: ${{ github.base_ref }}
+  mcp-config-path:
+    description: >
+      Optional path to a custom MCP config file. When set, overrides the built-in
+      Elementary MCP config. Use this only for non-standard or self-hosted setups.
+    default: ""
 
 runs:
   using: composite
   steps:
-    - name: Install dependencies
+    - name: Install Claude CLI
+      shell: bash
+      run: npm install -g @anthropic-ai/claude-code
+
+    - name: Generate MCP config
       shell: bash
       run: |
-        # elementary-data provides the edr binary
-        if [ -n "${{ inputs.edr-version }}" ]; then
-          pip install --quiet "elementary-data==${{ inputs.edr-version }}"
+        if [ -n "${{ inputs.mcp-config-path }}" ]; then
+          echo "MCP_CONFIG_PATH=${{ inputs.mcp-config-path }}" >> $GITHUB_ENV
         else
-          pip install --quiet elementary-data
+          printf '{"mcpServers":{"elementary":{"command":"npx","args":["-y","mcp-remote@latest","https://prod.api.elementary-data.com/mcp/","--header","Authorization:${AUTH_HEADER}"],"env":{"AUTH_HEADER":"Bearer %s"}}}}\n' \
+            "${{ inputs.elementary-api-key }}" > /tmp/elementary-mcp.json
+          echo "MCP_CONFIG_PATH=/tmp/elementary-mcp.json" >> $GITHUB_ENV
         fi
-        npm install -g @anthropic-ai/claude-code
+
+    - name: Debug MCP connectivity
+      shell: bash
+      run: |
+        echo "=== MCP config (token redacted) ==="
+        cat "${MCP_CONFIG_PATH}" | sed 's/Bearer [^""]*/Bearer ***/'
+        echo ""
+        echo "=== Connectivity check ==="
+        curl -s -o /dev/null -w "HTTP %{http_code}" \
+          -H "Authorization: Bearer ${{ inputs.elementary-api-key }}" \
+          https://prod.api.elementary-data.com/mcp/ || true
 
     - name: Run Elementary review
       shell: bash
@@ -66,7 +83,6 @@ runs:
         export UPDATE_COMMENT_URL_TPL="https://api.github.com/repos/${{ github.repository }}/issues/comments/{id}"
         export AUTH_HEADER_NAME="Authorization"
         export AUTH_HEADER_VALUE="Bearer ${{ github.token }}"
-        export MCP_CONFIG_PATH="${{ inputs.mcp-config-path }}"
         export CLAUDE_MODEL="${{ inputs.claude-model }}"
 
         bash "${{ github.action_path }}/scripts/review.sh"

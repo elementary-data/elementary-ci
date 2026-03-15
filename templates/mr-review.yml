@@ -9,20 +9,19 @@ spec:
     diff_filter:
       default: "ACM"
       description: "git diff --diff-filter value (A=added, C=copied, M=modified)"
-    edr_version:
-      default: ""
-      description: "Pin to a specific elementary-data version, e.g. '0.15.0' (empty = latest)"
     claude_model:
       default: "claude-haiku-4-5-20251001"
       description: >
         Claude model ID to use.
         See https://docs.anthropic.com/en/docs/about-claude/models for available models.
-    mcp_config_path:
-      default: ".mcp.json"
-      description: "Path to the MCP config file in the repo"
     allow_failure:
       default: "true"
       description: "Whether to allow the job to fail without blocking the MR"
+    mcp_config_path:
+      default: ""
+      description: >
+        Optional path to a custom MCP config file. When set, overrides the built-in
+        Elementary MCP config. Use this only for non-standard or self-hosted setups.
 
 ---
 
@@ -42,14 +41,26 @@ elementary-mr-review:
   allow_failure: $[[ inputs.allow_failure ]]
 
   before_script:
-    - apt-get update -qq && apt-get install -y -qq python3 python3-pip git
-    - |
-      if [ -n "$[[ inputs.edr_version ]]" ]; then
-        pip install --quiet "elementary-data==$[[ inputs.edr_version ]]"
-      else
-        pip install --quiet elementary-data
-      fi
+    - apt-get update -qq && apt-get install -y -qq git curl
     - npm install -g @anthropic-ai/claude-code
+    - |
+      if [ -n "$[[ inputs.mcp_config_path ]]" ]; then
+        export MCP_CONFIG_PATH="$[[ inputs.mcp_config_path ]]"
+      else
+        cat > /tmp/elementary-mcp.json <<EOF
+        {
+          "mcpServers": {
+            "elementary": {
+              "url": "https://mcp.elementary-data.com/sse",
+              "headers": {
+                "Authorization": "Bearer ${ELEMENTARY_API_KEY}"
+              }
+            }
+          }
+        }
+        EOF
+        export MCP_CONFIG_PATH="/tmp/elementary-mcp.json"
+      fi
 
   script:
     - |
@@ -58,11 +69,6 @@ elementary-mr-review:
         origin/${CI_MERGE_REQUEST_TARGET_BRANCH_NAME}...HEAD \
         -- $[[ inputs.models_path ]])
 
-      if [ -z "${DIFF}" ]; then
-        echo "No dbt model changes detected, skipping Elementary review."
-        exit 0
-      fi
-
       export DIFF
       export COMMENT_MARKER="<!-- elementary-mr-review -->"
       export POST_COMMENT_URL="${CI_SERVER_URL}/api/v4/projects/${CI_PROJECT_ID}/merge_requests/${CI_MERGE_REQUEST_IID}/notes"
@@ -70,11 +76,8 @@ elementary-mr-review:
       export UPDATE_COMMENT_URL_TPL="${CI_SERVER_URL}/api/v4/projects/${CI_PROJECT_ID}/merge_requests/${CI_MERGE_REQUEST_IID}/notes/{id}"
       export AUTH_HEADER_NAME="PRIVATE-TOKEN"
       export AUTH_HEADER_VALUE="${GITLAB_API_TOKEN}"
-      export MCP_CONFIG_PATH="$[[ inputs.mcp_config_path ]]"
       export CLAUDE_MODEL="$[[ inputs.claude_model ]]"
 
-      # Fetch and run the shared review script from the component repo
-      # Pinned to a specific tag - update this when cutting a new release
       SCRIPT_TAG="${ELEMENTARY_CI_SCRIPT_TAG:-v1}"
       curl -fsSL \
         "https://raw.githubusercontent.com/elementary-data/elementary-ci/${SCRIPT_TAG}/scripts/review.sh" \
