@@ -21,13 +21,13 @@ inputs:
   diff-filter:
     description: >
       git diff --diff-filter value.
-      ACM = Added, Copied, Modified (excludes deleted models).
+      ACMR = Added, Copied, Modified, Renamed (excludes deleted models).
     default: "ACMR"
   claude-model:
     description: >
       Claude model ID to use.
       See https://docs.anthropic.com/en/docs/about-claude/models for available models.
-    default: "claude-haiku-4-5-20251001"
+    default: "claude-haiku-4-5-latest"
   base-ref:
     description: Base branch to diff against. Defaults to the PR base branch.
     default: ${{ github.base_ref }}
@@ -36,6 +36,13 @@ inputs:
       Optional path to a custom MCP config file. When set, overrides the built-in
       Elementary MCP config. Use this only for non-standard or self-hosted setups.
     default: ""
+
+outputs:
+  review-status:
+    description: >
+      Whether the review completed successfully.
+      "success" if the review ran, "skipped" if no model changes were detected.
+    value: ${{ steps.review.outputs.status }}
 
 runs:
   using: composite
@@ -55,18 +62,23 @@ runs:
           echo "MCP_CONFIG_PATH=/tmp/elementary-mcp.json" >> $GITHUB_ENV
         fi
 
-    - name: Debug MCP connectivity
+    - name: Verify MCP connectivity
       shell: bash
       run: |
         echo "=== MCP config (token redacted) ==="
         cat "${MCP_CONFIG_PATH}" | sed 's/Bearer [^""]*/Bearer ***/'
         echo ""
         echo "=== Connectivity check ==="
-        curl -s -o /dev/null -w "HTTP %{http_code}" \
+        HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
           -H "Authorization: Bearer ${{ inputs.elementary-api-key }}" \
-          https://prod.api.elementary-data.com/mcp/ || true
+          https://prod.api.elementary-data.com/mcp/)
+        echo "HTTP ${HTTP_STATUS}"
+        if [ "${HTTP_STATUS}" -lt 200 ] || [ "${HTTP_STATUS}" -ge 400 ]; then
+          echo "::warning::Elementary MCP server returned HTTP ${HTTP_STATUS}. The review will proceed but may lack data quality context."
+        fi
 
     - name: Run Elementary review
+      id: review
       shell: bash
       env:
         ANTHROPIC_API_KEY: ${{ inputs.anthropic-api-key }}
@@ -75,6 +87,12 @@ runs:
           --diff-filter=${{ inputs.diff-filter }} \
           origin/${{ inputs.base-ref }}...HEAD \
           -- ${{ inputs.models-path }})
+
+        if [ -z "${DIFF}" ]; then
+          echo "status=skipped" >> $GITHUB_OUTPUT
+          echo "No dbt model changes detected, skipping Elementary review."
+          exit 0
+        fi
 
         export DIFF
         export COMMENT_MARKER="<!-- elementary-mr-review -->"
@@ -86,3 +104,4 @@ runs:
         export CLAUDE_MODEL="${{ inputs.claude-model }}"
 
         bash "${{ github.action_path }}/scripts/review.sh"
+        echo "status=success" >> $GITHUB_OUTPUT

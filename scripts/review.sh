@@ -11,7 +11,7 @@
 #   AUTH_HEADER_NAME         Header name:  "Authorization"  (GitHub) | "PRIVATE-TOKEN" (GitLab)
 #   AUTH_HEADER_VALUE        Header value: "Bearer <token>" (GitHub) | "<token>"       (GitLab)
 #   MCP_CONFIG_PATH          Path to .mcp.json
-#   CLAUDE_MODEL             Claude model ID to use (default: claude-haiku-4-5-20251001)
+#   CLAUDE_MODEL             Claude model ID to use (default: claude-haiku-4-5-latest)
 
 set -euo pipefail
 
@@ -25,7 +25,7 @@ if [ -z "${MCP_CONFIG_PATH:-}" ]; then
   exit 1
 fi
 
-CLAUDE_MODEL="${CLAUDE_MODEL:-claude-haiku-4-5-20251001}"
+CLAUDE_MODEL="${CLAUDE_MODEL:-claude-haiku-4-5-latest}"
 COMMENT_FILE="/tmp/elementary-comment.md"
 
 # Step 1: Claude generates the comment and writes it to a file
@@ -37,11 +37,19 @@ Git diff of changed dbt models:
 ${DIFF}
 \`\`\`
 
-Using the Elementary MCP tools available to you:
-1. For each changed model, fetch test results from the last 7 days
-2. Check for any active data quality incidents affecting these models
-3. Get downstream lineage (depth 2) to assess blast radius of changes
-4. Summarize overall model health
+Using the Elementary MCP tools available to you, follow these steps:
+
+0. Discover the working environment using get_environments, then scope all
+   subsequent queries to the relevant environment.
+1. For each changed model, use get_table_asset to retrieve its metadata and
+   associated tests. Then use get_tests and get_test_execution_history to
+   fetch test results and recent execution patterns.
+2. Use get_asset_incidents_history to check for active or recent data quality
+   incidents affecting these models.
+3. Use get_downstream_assets (depth 2) to assess the blast radius of changes.
+   For any renamed or removed columns, also use get_column_downstream_columns
+   to identify column-level impact on downstream models and BI tools.
+4. Summarize overall model health, test coverage, and change risk.
 
 Write a Markdown comment summarising your findings to the file: ${COMMENT_FILE}
 
