@@ -1,57 +1,30 @@
-spec:
-  inputs:
-    stage:
-      default: "test"
-      description: "Pipeline stage to run the job in"
-    models_path:
-      default: "models/"
-      description: "Path to dbt models directory relative to repo root"
-    diff_filter:
-      default: "ACM"
-      description: "git diff --diff-filter value (A=added, C=copied, M=modified)"
-    claude_model:
-      default: "claude-haiku-4-5-20251001"
-      description: >
-        Claude model ID to use.
-        See https://docs.anthropic.com/en/docs/about-claude/models for available models.
-    allow_failure:
-      default: "true"
-      description: "Whether to allow the job to fail without blocking the MR"
-    mcp_config_path:
-      default: ""
-      description: >
-        Optional path to a custom MCP config file. When set, overrides the built-in
-        Elementary MCP config. Use this only for non-standard or self-hosted setups.
-
----
-
 elementary-mr-review:
-  stage: $[[ inputs.stage ]]
+  stage: ${ELEMENTARY_CI_STAGE:-test}
   image: node:22-slim
 
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
       changes:
-        - "$[[ inputs.models_path ]]**/*.sql"
-        - "$[[ inputs.models_path ]]**/*.yml"
+        - "models/**/*.sql"
+        - "models/**/*.yml"
         - "dbt_project.yml"
       when: always
     - when: never
 
-  allow_failure: $[[ inputs.allow_failure ]]
+  allow_failure: true
 
   before_script:
     - apt-get update -qq && apt-get install -y -qq git curl
     - npm install -g @anthropic-ai/claude-code
     - |
-      if [ -n "$[[ inputs.mcp_config_path ]]" ]; then
-        export MCP_CONFIG_PATH="$[[ inputs.mcp_config_path ]]"
+      if [ -n "${ELEMENTARY_CI_MCP_CONFIG_PATH:-}" ]; then
+        export MCP_CONFIG_PATH="${ELEMENTARY_CI_MCP_CONFIG_PATH}"
       else
         cat > /tmp/elementary-mcp.json <<EOF
         {
           "mcpServers": {
             "elementary": {
-              "url": "https://mcp.elementary-data.com/sse",
+              "url": "https://prod.api.elementary-data.com/mcp/",
               "headers": {
                 "Authorization": "Bearer ${ELEMENTARY_API_KEY}"
               }
@@ -64,10 +37,13 @@ elementary-mr-review:
 
   script:
     - |
+      MODELS_PATH="${ELEMENTARY_CI_MODELS_PATH:-models/}"
+      DIFF_FILTER="${ELEMENTARY_CI_DIFF_FILTER:-ACM}"
+
       DIFF=$(git diff \
-        --diff-filter=$[[ inputs.diff_filter ]] \
+        --diff-filter=${DIFF_FILTER} \
         origin/${CI_MERGE_REQUEST_TARGET_BRANCH_NAME}...HEAD \
-        -- $[[ inputs.models_path ]])
+        -- ${MODELS_PATH})
 
       export DIFF
       export COMMENT_MARKER="<!-- elementary-mr-review -->"
@@ -76,10 +52,10 @@ elementary-mr-review:
       export UPDATE_COMMENT_URL_TPL="${CI_SERVER_URL}/api/v4/projects/${CI_PROJECT_ID}/merge_requests/${CI_MERGE_REQUEST_IID}/notes/{id}"
       export AUTH_HEADER_NAME="PRIVATE-TOKEN"
       export AUTH_HEADER_VALUE="${GITLAB_API_TOKEN}"
-      export CLAUDE_MODEL="$[[ inputs.claude_model ]]"
+      export CLAUDE_MODEL="${ELEMENTARY_CI_CLAUDE_MODEL:-claude-haiku-4-5-20251001}"
 
       SCRIPT_TAG="${ELEMENTARY_CI_SCRIPT_TAG:-v1}"
       curl -fsSL \
-        "https://raw.githubusercontent.com/elementary-data/elementary-ci/${SCRIPT_TAG}/scripts/review.sh" \
+        "https://raw.githubusercontent.com/joostboon/elementary-ci/${SCRIPT_TAG}/scripts/review.sh" \
         -o /tmp/elementary_review.sh
       bash /tmp/elementary_review.sh
