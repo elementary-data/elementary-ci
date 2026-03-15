@@ -29,6 +29,8 @@ elementary-mr-review:
       MODELS_PATH="${ELEMENTARY_CI_MODELS_PATH:-models/}"
       DIFF_FILTER="${ELEMENTARY_CI_DIFF_FILTER:-ACM}"
 
+      git fetch origin "${CI_MERGE_REQUEST_TARGET_BRANCH_NAME}"
+
       DIFF=$(git diff \
         --diff-filter=${DIFF_FILTER} \
         origin/${CI_MERGE_REQUEST_TARGET_BRANCH_NAME}...HEAD \
