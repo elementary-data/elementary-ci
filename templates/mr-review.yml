@@ -47,6 +47,6 @@ elementary-mr-review:
 
       SCRIPT_TAG="${ELEMENTARY_CI_SCRIPT_TAG:-v1}"
       curl -fsSL \
-        "https://raw.githubusercontent.com/joostboon/elementary-ci/${SCRIPT_TAG}/scripts/review.sh" \
+        "https://raw.githubusercontent.com/elementary-data/elementary-ci/${SCRIPT_TAG}/scripts/review.sh" \
         -o /tmp/elementary_review.sh
       bash /tmp/elementary_review.sh
