@@ -1,5 +1,4 @@
 elementary-mr-review:
-  stage: ${ELEMENTARY_CI_STAGE:-test}
   image: node:22-slim
 
   rules:
