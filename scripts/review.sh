@@ -26,7 +26,7 @@ if [ -z "${MCP_CONFIG_PATH:-}" ]; then
 fi
 
 CLAUDE_MODEL="${CLAUDE_MODEL:-claude-haiku-4-5}"
-COMMENT_FILE="/tmp/elementary-comment.md"
+export COMMENT_FILE="/tmp/elementary-comment.md"
 
 # Step 1: Claude generates the comment — output captured directly from stdout
 claude -p "
@@ -75,58 +75,75 @@ if [ ! -s "${COMMENT_FILE}" ]; then
   exit 1
 fi
 
-# Step 2: Post or update the comment via the API using Python for correct JSON encoding
-python3 - <<PYEOF
-import json, os, urllib.request, urllib.error
+# Step 2: Post or update the comment via the API using Node.js for correct JSON encoding
+node - <<'JSEOF'
+const fs = require("fs");
+const https = require("https");
+const http = require("http");
 
-comment_file = "${COMMENT_FILE}"
-post_url = "${POST_COMMENT_URL}"
-list_url = "${LIST_COMMENTS_URL}"
-update_tpl = "${UPDATE_COMMENT_URL_TPL}"
-auth_header_name = "${AUTH_HEADER_NAME}"
-auth_header_value = "${AUTH_HEADER_VALUE}"
-marker = "${COMMENT_MARKER}"
+const body = fs.readFileSync(process.env.COMMENT_FILE || "/tmp/elementary-comment.md", "utf8").trim();
+const postUrl = process.env.POST_COMMENT_URL;
+const listUrl = process.env.LIST_COMMENTS_URL;
+const updateTpl = process.env.UPDATE_COMMENT_URL_TPL;
+const authName = process.env.AUTH_HEADER_NAME;
+const authValue = process.env.AUTH_HEADER_VALUE;
+const marker = process.env.COMMENT_MARKER;
 
-with open(comment_file) as f:
-    body = f.read().strip()
-
-headers = {
-    auth_header_name: auth_header_value,
-    "Content-Type": "application/json",
+function api(method, reqUrl, data) {
+  return new Promise((resolve, reject) => {
+    const parsed = new URL(reqUrl);
+    const mod = parsed.protocol === "https:" ? https : http;
+    const opts = {
+      method,
+      hostname: parsed.hostname,
+      port: parsed.port,
+      path: parsed.pathname + parsed.search,
+      headers: { [authName]: authValue, "Content-Type": "application/json" },
+    };
+    const req = mod.request(opts, (res) => {
+      let chunks = [];
+      res.on("data", (c) => chunks.push(c));
+      res.on("end", () => {
+        const text = Buffer.concat(chunks).toString();
+        if (res.statusCode >= 400) {
+          console.error(`HTTP ${res.statusCode} ${method} ${reqUrl}: ${text}`);
+          return reject(new Error(`HTTP ${res.statusCode}`));
+        }
+        resolve(text ? JSON.parse(text) : {});
+      });
+    });
+    req.on("error", reject);
+    if (data) req.write(JSON.stringify(data));
+    req.end();
+  });
 }
 
-def api(method, url, data=None):
-    req = urllib.request.Request(url, method=method, headers=headers,
-                                  data=json.dumps(data).encode() if data else None)
-    try:
-        resp = urllib.request.urlopen(req)
-        return json.loads(resp.read())
-    except urllib.error.HTTPError as e:
-        print(f"HTTP {e.code} {method} {url}: {e.read().decode()}")
-        raise
+(async () => {
+  // Find existing Elementary comment
+  let existingId = null;
+  let page = 1;
+  while (true) {
+    const notes = await api("GET", `${listUrl}?per_page=100&page=${page}`);
+    if (!Array.isArray(notes) || notes.length === 0) break;
+    for (const note of notes) {
+      if (note.body && note.body.includes(marker)) {
+        existingId = note.id;
+        break;
+      }
+    }
+    if (existingId || notes.length < 100) break;
+    page++;
+  }
 
-# Find existing Elementary comment
-existing_id = None
-page = 1
-while True:
-    notes = api("GET", f"{list_url}?per_page=100&page={page}")
-    if not notes:
-        break
-    for note in notes:
-        if marker in note.get("body", ""):
-            existing_id = note["id"]
-            break
-    if existing_id or len(notes) < 100:
-        break
-    page += 1
-
-if existing_id:
-    url = update_tpl.replace("{id}", str(existing_id))
-    # GitHub uses PATCH, GitLab uses PUT
-    method = "PUT" if "${AUTH_HEADER_NAME}" == "JOB-TOKEN" else "PATCH"
-    result = api(method, url, {"body": body})
-    print(f"Updated existing comment (id: {existing_id})")
-else:
-    result = api("POST", post_url, {"body": body})
-    print(f"Posted new comment (id: {result.get('id')})")
-PYEOF
+  if (existingId) {
+    const updateUrl = updateTpl.replace("{id}", String(existingId));
+    // GitHub uses PATCH, GitLab uses PUT
+    const method = authName === "JOB-TOKEN" ? "PUT" : "PATCH";
+    await api(method, updateUrl, { body });
+    console.log(`Updated existing comment (id: ${existingId})`);
+  } else {
+    const result = await api("POST", postUrl, { body });
+    console.log(`Posted new comment (id: ${result.id})`);
+  }
+})();
+JSEOF
