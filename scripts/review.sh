@@ -138,7 +138,7 @@ function api(method, reqUrl, data) {
   if (existingId) {
     const updateUrl = updateTpl.replace("{id}", String(existingId));
     // GitHub uses PATCH, GitLab uses PUT
-    const method = authName === "PRIVATE-TOKEN" ? "PUT" : "PATCH";
+    const method = authName === "JOB-TOKEN" ? "PUT" : "PATCH";
     await api(method, updateUrl, { body });
     console.log(`Updated existing comment (id: ${existingId})`);
   } else {
