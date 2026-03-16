@@ -68,7 +68,7 @@ Only write the file. Do not post to any API.
 " \
   --mcp-config "${MCP_CONFIG_PATH}" \
   --model "${CLAUDE_MODEL}" \
-  --allowedTools "mcp__elementary__*,Bash(cat:*,echo:*,tee:*,printf:*)" \
+  --allowedTools "mcp__elementary__*,Write,Bash(cat:*,echo:*,tee:*,printf:*)" \
   --output-format text
 
 if [ ! -f "${COMMENT_FILE}" ]; then
