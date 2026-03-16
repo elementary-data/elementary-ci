@@ -28,7 +28,7 @@ fi
 CLAUDE_MODEL="${CLAUDE_MODEL:-claude-haiku-4-5}"
 COMMENT_FILE="/tmp/elementary-comment.md"
 
-# Step 1: Claude generates the comment and writes it to a file
+# Step 1: Claude generates the comment — output captured directly from stdout
 claude -p "
 You are a data quality reviewer for a pull/merge request.
 
@@ -51,7 +51,7 @@ Using the Elementary MCP tools available to you, follow these steps:
    to identify column-level impact on downstream models and BI tools.
 4. Summarize overall model health, test coverage, and change risk.
 
-Write a Markdown comment summarising your findings to the file: ${COMMENT_FILE}
+Output ONLY the Markdown comment — no tool calls, no explanation, just the comment.
 
 Format requirements:
 - First line must be exactly: ${COMMENT_MARKER}
@@ -63,16 +63,15 @@ Format requirements:
 - If a model has no Elementary history yet, say so explicitly
 - If the MCP server is unreachable, say so rather than omitting the section
 - End with: _Posted by [Elementary CI](https://www.elementary-data.com)_
-
-Only write the file. Do not post to any API.
 " \
   --mcp-config "${MCP_CONFIG_PATH}" \
   --model "${CLAUDE_MODEL}" \
-  --allowedTools "mcp__elementary__*,Write,Bash(cat:*,echo:*,tee:*,printf:*)" \
-  --output-format text
+  --allowedTools "mcp__elementary__*" \
+  --output-format text \
+  > "${COMMENT_FILE}"
 
-if [ ! -f "${COMMENT_FILE}" ]; then
-  echo "ERROR: Claude did not write the comment file." >&2
+if [ ! -s "${COMMENT_FILE}" ]; then
+  echo "ERROR: Claude produced empty output." >&2
   exit 1
 fi
 
