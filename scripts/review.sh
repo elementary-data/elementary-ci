@@ -8,8 +8,8 @@
 #   POST_COMMENT_URL         API URL to POST a new comment
 #   LIST_COMMENTS_URL        API URL to GET existing comments (for idempotency check)
 #   UPDATE_COMMENT_URL_TPL   URL template for updating a comment, with {id} placeholder
-#   AUTH_HEADER_NAME         Header name:  "Authorization"  (GitHub) | "PRIVATE-TOKEN" (GitLab)
-#   AUTH_HEADER_VALUE        Header value: "Bearer <token>" (GitHub) | "<token>"       (GitLab)
+#   AUTH_HEADER_NAME         Header name:  "Authorization"     (GitHub) | "PRIVATE-TOKEN" (GitLab)
+#   AUTH_HEADER_VALUE        Header value: "Bearer <token>"   (GitHub) | "<token>"       (GitLab)
 #   MCP_CONFIG_PATH          Path to .mcp.json
 #   CLAUDE_MODEL             Claude model ID to use (default: claude-haiku-4-5)
 
@@ -138,7 +138,7 @@ function api(method, reqUrl, data) {
   if (existingId) {
     const updateUrl = updateTpl.replace("{id}", String(existingId));
     // GitHub uses PATCH, GitLab uses PUT
-    const method = authName === "JOB-TOKEN" ? "PUT" : "PATCH";
+    const method = authName === "PRIVATE-TOKEN" ? "PUT" : "PATCH";
     await api(method, updateUrl, { body });
     console.log(`Updated existing comment (id: ${existingId})`);
   } else {
