@@ -41,8 +41,13 @@ elementary-mr-review:
       export POST_COMMENT_URL="${CI_SERVER_URL}/api/v4/projects/${CI_PROJECT_ID}/merge_requests/${CI_MERGE_REQUEST_IID}/notes"
       export LIST_COMMENTS_URL="${CI_SERVER_URL}/api/v4/projects/${CI_PROJECT_ID}/merge_requests/${CI_MERGE_REQUEST_IID}/notes"
       export UPDATE_COMMENT_URL_TPL="${CI_SERVER_URL}/api/v4/projects/${CI_PROJECT_ID}/merge_requests/${CI_MERGE_REQUEST_IID}/notes/{id}"
-      export AUTH_HEADER_NAME="JOB-TOKEN"
-      export AUTH_HEADER_VALUE="${CI_JOB_TOKEN}"
+      if [ -n "${GITLAB_API_TOKEN:-}" ]; then
+        export AUTH_HEADER_NAME="PRIVATE-TOKEN"
+        export AUTH_HEADER_VALUE="${GITLAB_API_TOKEN}"
+      else
+        export AUTH_HEADER_NAME="JOB-TOKEN"
+        export AUTH_HEADER_VALUE="${CI_JOB_TOKEN}"
+      fi
       export CLAUDE_MODEL="${ELEMENTARY_CI_CLAUDE_MODEL:-claude-haiku-4-5}"
 
       SCRIPT_TAG="${ELEMENTARY_CI_SCRIPT_TAG:-v1}"
