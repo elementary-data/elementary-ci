@@ -71,10 +71,18 @@ runs:
         echo "=== Connectivity check ==="
         HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
           -H "Authorization: Bearer ${{ inputs.elementary-api-key }}" \
-          https://prod.api.elementary-data.com/mcp/)
+          https://prod.api.elementary-data.com/mcp/) || HTTP_STATUS="000"
         echo "HTTP ${HTTP_STATUS}"
-        if [ "${HTTP_STATUS}" -lt 200 ] || [ "${HTTP_STATUS}" -ge 400 ]; then
+        # 406 is expected — the MCP endpoint uses SSE and rejects plain GET requests.
+        # We only warn on auth failures (401/403), server errors (5xx), or connection failures (000).
+        if [ "${HTTP_STATUS}" = "000" ]; then
+          echo "::warning::Could not connect to Elementary MCP server. The review will proceed but may lack data quality context."
+        elif [ "${HTTP_STATUS}" -eq 401 ] || [ "${HTTP_STATUS}" -eq 403 ]; then
+          echo "::warning::Elementary MCP server returned HTTP ${HTTP_STATUS} (auth rejected). Check your elementary-api-key."
+        elif [ "${HTTP_STATUS}" -ge 500 ]; then
           echo "::warning::Elementary MCP server returned HTTP ${HTTP_STATUS}. The review will proceed but may lack data quality context."
+        else
+          echo "Server reachable (HTTP ${HTTP_STATUS})"
         fi
 
     - name: Run Elementary review
