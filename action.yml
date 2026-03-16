@@ -27,7 +27,7 @@ inputs:
     description: >
       Claude model ID to use.
       See https://docs.anthropic.com/en/docs/about-claude/models for available models.
-    default: "claude-haiku-4-5-latest"
+    default: "claude-haiku-4-5"
   base-ref:
     description: Base branch to diff against. Defaults to the PR base branch.
     default: ${{ github.base_ref }}

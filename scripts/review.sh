@@ -11,7 +11,7 @@
 #   AUTH_HEADER_NAME         Header name:  "Authorization"  (GitHub) | "PRIVATE-TOKEN" (GitLab)
 #   AUTH_HEADER_VALUE        Header value: "Bearer <token>" (GitHub) | "<token>"       (GitLab)
 #   MCP_CONFIG_PATH          Path to .mcp.json
-#   CLAUDE_MODEL             Claude model ID to use (default: claude-haiku-4-5-latest)
+#   CLAUDE_MODEL             Claude model ID to use (default: claude-haiku-4-5)
 
 set -euo pipefail
 
@@ -25,7 +25,7 @@ if [ -z "${MCP_CONFIG_PATH:-}" ]; then
   exit 1
 fi
 
-CLAUDE_MODEL="${CLAUDE_MODEL:-claude-haiku-4-5-latest}"
+CLAUDE_MODEL="${CLAUDE_MODEL:-claude-haiku-4-5}"
 COMMENT_FILE="/tmp/elementary-comment.md"
 
 # Step 1: Claude generates the comment and writes it to a file
