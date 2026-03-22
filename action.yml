@@ -1,6 +1,6 @@
 name: Elementary Data Quality Review
 description: >
-  Queries the Elementary MCP server for data quality context on changed dbt models
+  Queries the Elementary API for data quality context on changed dbt models
   and posts a summary comment to the GitHub Pull Request.
 author: Elementary Data
 
@@ -9,9 +9,6 @@ branding:
   color: blue
 
 inputs:
-  anthropic-api-key:
-    description: Anthropic API key for Claude
-    required: true
   elementary-api-key:
     description: Elementary Cloud API key
     required: true
@@ -23,19 +20,9 @@ inputs:
       git diff --diff-filter value.
       ACMR = Added, Copied, Modified, Renamed (excludes deleted models).
     default: "ACMR"
-  claude-model:
-    description: >
-      Claude model ID to use.
-      See https://docs.anthropic.com/en/docs/about-claude/models for available models.
-    default: "claude-haiku-4-5"
   base-ref:
     description: Base branch to diff against. Defaults to the PR base branch.
     default: ${{ github.base_ref }}
-  mcp-config-path:
-    description: >
-      Optional path to a custom MCP config file. When set, overrides the built-in
-      Elementary MCP config. Use this only for non-standard or self-hosted setups.
-    default: ""
 
 outputs:
   review-status:
@@ -47,26 +34,11 @@ outputs:
 runs:
   using: composite
   steps:
-    - name: Install Claude CLI
-      shell: bash
-      run: npm install -g @anthropic-ai/claude-code
-
-    - name: Generate MCP config
-      shell: bash
-      run: |
-        if [ -n "${{ inputs.mcp-config-path }}" ]; then
-          echo "MCP_CONFIG_PATH=${{ inputs.mcp-config-path }}" >> $GITHUB_ENV
-        else
-          printf '{"mcpServers":{"elementary":{"command":"npx","args":["-y","mcp-remote@latest","https://prod.api.elementary-data.com/mcp/","--header","Authorization:${AUTH_HEADER}"],"env":{"AUTH_HEADER":"Bearer %s"}}}}\n' \
-            "${{ inputs.elementary-api-key }}" > /tmp/elementary-mcp.json
-          echo "MCP_CONFIG_PATH=/tmp/elementary-mcp.json" >> $GITHUB_ENV
-        fi
-
     - name: Run Elementary review
       id: review
       shell: bash
       env:
-        ANTHROPIC_API_KEY: ${{ inputs.anthropic-api-key }}
+        ELEMENTARY_API_KEY: ${{ inputs.elementary-api-key }}
       run: |
         DIFF=$(git diff \
           --diff-filter=${{ inputs.diff-filter }} \
@@ -86,7 +58,6 @@ runs:
         export UPDATE_COMMENT_URL_TPL="https://api.github.com/repos/${{ github.repository }}/issues/comments/{id}"
         export AUTH_HEADER_NAME="Authorization"
         export AUTH_HEADER_VALUE="Bearer ${{ github.token }}"
-        export CLAUDE_MODEL="${{ inputs.claude-model }}"
 
         bash "${{ github.action_path }}/scripts/review.sh"
         echo "status=success" >> $GITHUB_OUTPUT

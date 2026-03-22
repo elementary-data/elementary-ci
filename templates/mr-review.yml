@@ -13,16 +13,7 @@ elementary-mr-review:
   allow_failure: true
 
   before_script:
-    - apt-get update -qq && apt-get install -y -qq git curl
-    - npm install -g @anthropic-ai/claude-code
-    - |
-      if [ -n "${ELEMENTARY_CI_MCP_CONFIG_PATH:-}" ]; then
-        export MCP_CONFIG_PATH="${ELEMENTARY_CI_MCP_CONFIG_PATH}"
-      else
-        printf '{"mcpServers":{"elementary":{"command":"npx","args":["-y","mcp-remote@latest","https://prod.api.elementary-data.com/mcp/","--header","Authorization:${AUTH_HEADER}"],"env":{"AUTH_HEADER":"Bearer %s"}}}}\n' \
-          "${ELEMENTARY_API_KEY}" > /tmp/elementary-mcp.json
-        export MCP_CONFIG_PATH="/tmp/elementary-mcp.json"
-      fi
+    - apt-get update -qq && apt-get install -y -qq git curl jq
 
   script:
     - |
@@ -48,7 +39,6 @@ elementary-mr-review:
         export AUTH_HEADER_NAME="JOB-TOKEN"
         export AUTH_HEADER_VALUE="${CI_JOB_TOKEN}"
       fi
-      export CLAUDE_MODEL="${ELEMENTARY_CI_CLAUDE_MODEL:-claude-haiku-4-5}"
 
       SCRIPT_TAG="${ELEMENTARY_CI_SCRIPT_TAG:-v1}"
       curl -fsSL \
