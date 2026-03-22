@@ -40,7 +40,7 @@ RESPONSE=$(curl -sf --max-time 120 \
 printf '%s' "${RESPONSE}" | jq -r '.comment' > "${COMMENT_FILE}"
 
 if [ ! -s "${COMMENT_FILE}" ]; then
-  echo "ERROR: Claude produced empty output." >&2
+  echo "ERROR: Elementary API returned empty comment." >&2
   exit 1
 fi
 
@@ -78,7 +78,12 @@ function api(method, reqUrl, data) {
           console.error(`HTTP ${res.statusCode} ${method} ${reqUrl}: ${text}`);
           return reject(new Error(`HTTP ${res.statusCode}`));
         }
-        resolve(text ? JSON.parse(text) : {});
+        try {
+          resolve(text ? JSON.parse(text) : {});
+        } catch (e) {
+          console.error(`Failed to parse JSON from ${method} ${reqUrl}: ${text.slice(0, 500)}`);
+          reject(new Error(`Invalid JSON response from ${reqUrl}`));
+        }
       });
     });
     req.on("error", reject);
