@@ -15,7 +15,7 @@ elementary-mr-review:
     - |
       export REPOSITORY="${CI_PROJECT_PATH}"
       export BRANCH="${CI_MERGE_REQUEST_SOURCE_BRANCH_NAME}"
-      export COMMENT_MARKER="<!-- elementary-data-quality-review -->"
+      export COMMENT_MARKER="<!-- elementary-data-quality-code-review -->"
       export POST_COMMENT_URL="${CI_SERVER_URL}/api/v4/projects/${CI_PROJECT_ID}/merge_requests/${CI_MERGE_REQUEST_IID}/notes"
       export LIST_COMMENTS_URL="${CI_SERVER_URL}/api/v4/projects/${CI_PROJECT_ID}/merge_requests/${CI_MERGE_REQUEST_IID}/notes"
       export UPDATE_COMMENT_URL_TPL="${CI_SERVER_URL}/api/v4/projects/${CI_PROJECT_ID}/merge_requests/${CI_MERGE_REQUEST_IID}/notes/{id}"

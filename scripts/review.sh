@@ -6,7 +6,7 @@
 #   REPOSITORY               Repository identifier (e.g. "owner/repo")
 #   BRANCH                   Branch name to review
 #   ELEMENTARY_API_KEY       Elementary account API key
-#   COMMENT_MARKER           HTML marker for idempotency, e.g. <!-- elementary-data-quality-review -->
+#   COMMENT_MARKER           HTML marker for idempotency, e.g. <!-- elementary-data-quality-code-review -->
 #   POST_COMMENT_URL         API URL to POST a new comment
 #   LIST_COMMENTS_URL        API URL to GET existing comments (for idempotency check)
 #   UPDATE_COMMENT_URL_TPL   URL template for updating a comment, with {id} placeholder
