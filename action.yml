@@ -31,7 +31,7 @@ runs:
         REPOSITORY: ${{ github.repository }}
         BRANCH: ${{ github.head_ref }}
       run: |
-        export COMMENT_MARKER="<!-- elementary-mr-review -->"
+        export COMMENT_MARKER="<!-- elementary-data-quality-review -->"
         export POST_COMMENT_URL="https://api.github.com/repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments"
         export LIST_COMMENTS_URL="https://api.github.com/repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments"
         export UPDATE_COMMENT_URL_TPL="https://api.github.com/repos/${{ github.repository }}/issues/comments/{id}"
