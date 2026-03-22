@@ -12,23 +12,12 @@ inputs:
   elementary-api-key:
     description: Elementary Cloud API key
     required: true
-  models-path:
-    description: Path to the dbt models directory relative to repo root
-    default: "models/"
-  diff-filter:
-    description: >
-      git diff --diff-filter value.
-      ACMR = Added, Copied, Modified, Renamed (excludes deleted models).
-    default: "ACMR"
-  base-ref:
-    description: Base branch to diff against. Defaults to the PR base branch.
-    default: ${{ github.base_ref }}
 
 outputs:
   review-status:
     description: >
       Whether the review completed successfully.
-      "success" if the review ran, "skipped" if no model changes were detected.
+      "success" if the review ran.
     value: ${{ steps.review.outputs.status }}
 
 runs:
@@ -39,19 +28,9 @@ runs:
       shell: bash
       env:
         ELEMENTARY_API_KEY: ${{ inputs.elementary-api-key }}
+        REPOSITORY: ${{ github.repository }}
+        BRANCH: ${{ github.head_ref }}
       run: |
-        DIFF=$(git diff \
-          --diff-filter=${{ inputs.diff-filter }} \
-          origin/${{ inputs.base-ref }}...HEAD \
-          -- ${{ inputs.models-path }})
-
-        if [ -z "${DIFF}" ]; then
-          echo "status=skipped" >> $GITHUB_OUTPUT
-          echo "No dbt model changes detected, skipping Elementary review."
-          exit 0
-        fi
-
-        export DIFF
         export COMMENT_MARKER="<!-- elementary-mr-review -->"
         export POST_COMMENT_URL="https://api.github.com/repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments"
         export LIST_COMMENTS_URL="https://api.github.com/repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments"

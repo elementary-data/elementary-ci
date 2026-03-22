@@ -3,31 +3,18 @@ elementary-mr-review:
 
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
-      changes:
-        - "models/**/*.sql"
-        - "models/**/*.yml"
-        - "dbt_project.yml"
       when: always
     - when: never
 
   allow_failure: true
 
   before_script:
-    - apt-get update -qq && apt-get install -y -qq git curl jq
+    - apt-get update -qq && apt-get install -y -qq curl jq
 
   script:
     - |
-      MODELS_PATH="${ELEMENTARY_CI_MODELS_PATH:-models/}"
-      DIFF_FILTER="${ELEMENTARY_CI_DIFF_FILTER:-ACMR}"
-
-      git fetch origin "${CI_MERGE_REQUEST_TARGET_BRANCH_NAME}"
-
-      DIFF=$(git diff \
-        --diff-filter=${DIFF_FILTER} \
-        origin/${CI_MERGE_REQUEST_TARGET_BRANCH_NAME}...HEAD \
-        -- ${MODELS_PATH})
-
-      export DIFF
+      export REPOSITORY="${CI_PROJECT_PATH}"
+      export BRANCH="${CI_MERGE_REQUEST_SOURCE_BRANCH_NAME}"
       export COMMENT_MARKER="<!-- elementary-mr-review -->"
       export POST_COMMENT_URL="${CI_SERVER_URL}/api/v4/projects/${CI_PROJECT_ID}/merge_requests/${CI_MERGE_REQUEST_IID}/notes"
       export LIST_COMMENTS_URL="${CI_SERVER_URL}/api/v4/projects/${CI_PROJECT_ID}/merge_requests/${CI_MERGE_REQUEST_IID}/notes"

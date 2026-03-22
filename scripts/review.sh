@@ -3,7 +3,8 @@
 # Called by both the GitHub Action and GitLab CI component.
 #
 # Required environment variables (set by the wrapper):
-#   DIFF                     git diff output of changed dbt models
+#   REPOSITORY               Repository identifier (e.g. "owner/repo")
+#   BRANCH                   Branch name to review
 #   ELEMENTARY_API_KEY       Elementary account API key
 #   COMMENT_MARKER           HTML marker for idempotency, e.g. <!-- elementary-mr-review -->
 #   POST_COMMENT_URL         API URL to POST a new comment
@@ -14,13 +15,13 @@
 
 set -euo pipefail
 
-if [ -z "${DIFF:-}" ]; then
-  echo "No dbt model changes detected, skipping Elementary review."
-  exit 0
-fi
-
 if [ -z "${ELEMENTARY_API_KEY:-}" ]; then
   echo "ERROR: ELEMENTARY_API_KEY is not set." >&2
+  exit 1
+fi
+
+if [ -z "${REPOSITORY:-}" ] || [ -z "${BRANCH:-}" ]; then
+  echo "ERROR: REPOSITORY and BRANCH must be set." >&2
   exit 1
 fi
 
@@ -31,7 +32,7 @@ RESPONSE=$(curl -sf --max-time 120 \
   -X POST \
   -H "Authorization: Bearer ${ELEMENTARY_API_KEY}" \
   -H "Content-Type: application/json" \
-  --data-raw "{\"diff\": $(printf '%s' "${DIFF}" | jq -Rs .)}" \
+  --data-raw "{\"repository\": \"${REPOSITORY}\", \"branch\": \"${BRANCH}\"}" \
   "https://prod.api.elementary-data.com/api/v1/ci/review") || {
   echo "ERROR: Elementary API request failed." >&2
   exit 1
