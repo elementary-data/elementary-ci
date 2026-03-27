@@ -70,7 +70,7 @@ function api(method, reqUrl, data) {
       hostname: parsed.hostname,
       port: parsed.port,
       path: parsed.pathname + parsed.search,
-      headers: { [authName]: authValue, "Content-Type": "application/json" },
+      headers: { [authName]: authValue, "Content-Type": "application/json", "User-Agent": "elementary-ci" },
     };
     const req = mod.request(opts, (res) => {
       let chunks = [];
