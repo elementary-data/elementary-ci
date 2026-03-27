@@ -20,6 +20,8 @@ if [ -z "${ELEMENTARY_API_KEY:-}" ]; then
   exit 1
 fi
 
+ELEMENTARY_API_URL="${ELEMENTARY_API_URL:-https://prod.api.elementary-data.com}"
+
 if [ -z "${REPOSITORY:-}" ] || [ -z "${BRANCH:-}" ]; then
   echo "ERROR: REPOSITORY and BRANCH must be set." >&2
   exit 1
@@ -33,7 +35,7 @@ RESPONSE=$(curl -sf --max-time 120 \
   -H "Authorization: Bearer ${ELEMENTARY_API_KEY}" \
   -H "Content-Type: application/json" \
   --data-raw "{\"repository\": \"${REPOSITORY}\", \"branch\": \"${BRANCH}\"}" \
-  "https://prod.api.elementary-data.com/api/v1/ci/review") || {
+  "${ELEMENTARY_API_URL}/api/v1/ci/review") || {
   echo "ERROR: Elementary API request failed." >&2
   exit 1
 }
