@@ -35,7 +35,7 @@ RESPONSE=$(curl -sf --max-time 120 \
   -H "Authorization: Bearer ${ELEMENTARY_API_KEY}" \
   -H "Content-Type: application/json" \
   --data-raw "{\"repository\": \"${REPOSITORY}\", \"branch\": \"${BRANCH}\"}" \
-  "${ELEMENTARY_API_URL}/api/v1/ci/review") || {
+  "${ELEMENTARY_API_URL}/ci/review") || {
   echo "ERROR: Elementary API request failed." >&2
   exit 1
 }
