@@ -33,7 +33,7 @@ export COMMENT_FILE="/tmp/elementary-comment.md"
 # Step 1: Elementary API generates the comment
 PAYLOAD="{\"repository\": \"${REPOSITORY}\", \"branch\": \"${BRANCH}\""
 if [ -n "${ELEMENTARY_ENV_ID:-}" ]; then
-  PAYLOAD="${PAYLOAD}, \"env-id\": \"${ELEMENTARY_ENV_ID}\""
+  PAYLOAD="${PAYLOAD}, \"env_id\": \"${ELEMENTARY_ENV_ID}\""
 fi
 PAYLOAD="${PAYLOAD}}"
 
