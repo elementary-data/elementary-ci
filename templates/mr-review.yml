@@ -28,6 +28,8 @@ elementary-mr-review:
         export AUTH_HEADER_VALUE="${CI_JOB_TOKEN}"
       fi
 
+      export ELEMENTARY_ENV_ID="${ELEMENTARY_ENV_ID:-}"
+
       SCRIPT_TAG="${ELEMENTARY_CI_SCRIPT_TAG:-v1}"
       curl -fsSL \
         "https://raw.githubusercontent.com/elementary-data/elementary-ci/${SCRIPT_TAG}/scripts/review.sh" \

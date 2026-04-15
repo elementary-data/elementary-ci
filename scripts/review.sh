@@ -12,6 +12,7 @@
 #   UPDATE_COMMENT_URL_TPL   URL template for updating a comment, with {id} placeholder
 #   AUTH_HEADER_NAME         Header name:  "Authorization" (GitHub) | "PRIVATE-TOKEN" or "JOB-TOKEN" (GitLab)
 #   AUTH_HEADER_VALUE        Header value: "Bearer <token>" (GitHub) | "<token>" (GitLab)
+#   ELEMENTARY_ENV_ID        (optional) Elementary environment UUID
 
 set -euo pipefail
 
@@ -30,11 +31,17 @@ fi
 export COMMENT_FILE="/tmp/elementary-comment.md"
 
 # Step 1: Elementary API generates the comment
+PAYLOAD="{\"repository\": \"${REPOSITORY}\", \"branch\": \"${BRANCH}\""
+if [ -n "${ELEMENTARY_ENV_ID:-}" ]; then
+  PAYLOAD="${PAYLOAD}, \"env-id\": \"${ELEMENTARY_ENV_ID}\""
+fi
+PAYLOAD="${PAYLOAD}}"
+
 RESPONSE=$(curl -sf --max-time 120 \
   -X POST \
   -H "Authorization: Bearer ${ELEMENTARY_API_KEY}" \
   -H "Content-Type: application/json" \
-  --data-raw "{\"repository\": \"${REPOSITORY}\", \"branch\": \"${BRANCH}\"}" \
+  --data-raw "${PAYLOAD}" \
   "${ELEMENTARY_API_URL}/ci/review") || {
   echo "ERROR: Elementary API request failed." >&2
   exit 1

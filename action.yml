@@ -16,6 +16,12 @@ inputs:
     description: Elementary API base URL (defaults to production)
     required: false
     default: "https://prod.api.elementary-data.com"
+  elementary-env-id:
+    description: >
+      Elementary environment ID (UUID). Required when the repository is
+      connected to more than one Elementary environment. Found in the
+      Elementary Cloud URL, e.g. https://app.elementary-data.com/<env-id>/…
+    required: false
 
 outputs:
   review-status:
@@ -33,6 +39,7 @@ runs:
       env:
         ELEMENTARY_API_KEY: ${{ inputs.elementary-api-key }}
         ELEMENTARY_API_URL: ${{ inputs.elementary-api-url }}
+        ELEMENTARY_ENV_ID: ${{ inputs.elementary-env-id }}
         REPOSITORY: ${{ github.repository }}
         BRANCH: ${{ github.head_ref }}
       run: |
