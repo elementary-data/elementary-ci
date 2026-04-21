@@ -5,23 +5,27 @@
 # Required environment variables (set by the wrapper):
 #   REPOSITORY               Repository identifier (e.g. "owner/repo")
 #   BRANCH                   Branch name to review
-#   ELEMENTARY_API_KEY       Elementary account API key
-#   COMMENT_MARKER           HTML marker for idempotency, e.g. <!-- elementary-data-quality-code-review -->
+#   elementary_api_key       Elementary account API key (also accepts ELEMENTARY_API_KEY)
+#   COMMENT_MARKER           HTML marker for idempotency
 #   POST_COMMENT_URL         API URL to POST a new comment
 #   LIST_COMMENTS_URL        API URL to GET existing comments (for idempotency check)
 #   UPDATE_COMMENT_URL_TPL   URL template for updating a comment, with {id} placeholder
 #   AUTH_HEADER_NAME         Header name:  "Authorization" (GitHub) | "PRIVATE-TOKEN" or "JOB-TOKEN" (GitLab)
 #   AUTH_HEADER_VALUE        Header value: "Bearer <token>" (GitHub) | "<token>" (GitLab)
-#   ELEMENTARY_ENV_ID        (optional) Elementary environment UUID
+#   elementary_env_id        (optional) Elementary environment UUID (also accepts ELEMENTARY_ENV_ID)
 
 set -euo pipefail
 
-if [ -z "${ELEMENTARY_API_KEY:-}" ]; then
-  echo "ERROR: ELEMENTARY_API_KEY is not set." >&2
+# Accept both lowercase and uppercase env vars (lowercase takes priority)
+ELEMENTARY_API_KEY="${elementary_api_key:-${ELEMENTARY_API_KEY:-}}"
+ELEMENTARY_API_URL="${elementary_api_url:-${ELEMENTARY_API_URL:-https://prod.api.elementary-data.com}}"
+ELEMENTARY_ENV_ID="${elementary_env_id:-${ELEMENTARY_ENV_ID:-}}"
+GITLAB_API_TOKEN="${gitlab_api_token:-${GITLAB_API_TOKEN:-}}"
+
+if [ -z "${ELEMENTARY_API_KEY}" ]; then
+  echo "ERROR: elementary_api_key is not set." >&2
   exit 1
 fi
-
-ELEMENTARY_API_URL="${ELEMENTARY_API_URL:-https://prod.api.elementary-data.com}"
 
 if [ -z "${REPOSITORY:-}" ] || [ -z "${BRANCH:-}" ]; then
   echo "ERROR: REPOSITORY and BRANCH must be set." >&2
