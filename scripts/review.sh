@@ -41,7 +41,7 @@ if [ -n "${ELEMENTARY_ENV_ID:-}" ]; then
 fi
 PAYLOAD="${PAYLOAD}}"
 
-RESPONSE=$(curl -sf --max-time 120 \
+RESPONSE=$(curl -sf --max-time 300 \
   -X POST \
   -H "Authorization: Bearer ${ELEMENTARY_API_KEY}" \
   -H "Content-Type: application/json" \
