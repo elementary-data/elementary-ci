@@ -13,6 +13,10 @@
 #   AUTH_HEADER_NAME         Header name:  "Authorization" (GitHub) | "PRIVATE-TOKEN" or "JOB-TOKEN" (GitLab)
 #   AUTH_HEADER_VALUE        Header value: "Bearer <token>" (GitHub) | "<token>" (GitLab)
 #   elementary_env_id        (optional) Elementary environment UUID (also accepts ELEMENTARY_ENV_ID)
+#   elementary_post_inline_comments
+#                            (optional) "true" to also post findings as inline
+#                            review comments. Elementary posts them server-side
+#                            via the connected GitHub integration. GitHub only.
 
 set -euo pipefail
 
@@ -20,6 +24,7 @@ set -euo pipefail
 ELEMENTARY_API_KEY="${elementary_api_key:-${ELEMENTARY_API_KEY:-}}"
 ELEMENTARY_API_URL="${elementary_api_url:-${ELEMENTARY_API_URL:-https://prod.api.elementary-data.com}}"
 ELEMENTARY_ENV_ID="${elementary_env_id:-${ELEMENTARY_ENV_ID:-}}"
+ELEMENTARY_POST_INLINE_COMMENTS="${elementary_post_inline_comments:-${ELEMENTARY_POST_INLINE_COMMENTS:-false}}"
 GITLAB_API_TOKEN="${gitlab_api_token:-${GITLAB_API_TOKEN:-}}"
 
 if [ -z "${ELEMENTARY_API_KEY}" ]; then
@@ -39,9 +44,14 @@ PAYLOAD="{\"repository\": \"${REPOSITORY}\", \"branch\": \"${BRANCH}\""
 if [ -n "${ELEMENTARY_ENV_ID:-}" ]; then
   PAYLOAD="${PAYLOAD}, \"env_id\": \"${ELEMENTARY_ENV_ID}\""
 fi
+if [ "${ELEMENTARY_POST_INLINE_COMMENTS}" = "true" ]; then
+  PAYLOAD="${PAYLOAD}, \"post_inline_comments\": true"
+fi
 PAYLOAD="${PAYLOAD}}"
 
-RESPONSE=$(curl -sf --max-time 300 \
+# Above the API's own 300s review timeout, so a review that runs to the wire
+# still returns a response instead of curl aborting first.
+RESPONSE=$(curl -sf --max-time 320 \
   -X POST \
   -H "Authorization: Bearer ${ELEMENTARY_API_KEY}" \
   -H "Content-Type: application/json" \

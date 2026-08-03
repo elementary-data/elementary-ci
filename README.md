@@ -26,7 +26,7 @@ jobs:
   elementary-review:
     runs-on: ubuntu-latest
     steps:
-      - uses: elementary-data/elementary-ci@v1
+      - uses: elementary-data/elementary-ci@v2
         with:
           elementary-api-key: ${{ secrets.ELEMENTARY_API_KEY }}
 ```
@@ -36,6 +36,9 @@ jobs:
 | Input | Default | Description |
 |---|---|---|
 | `elementary-api-key` | required | Elementary Cloud API key |
+| `elementary-api-url` | `https://prod.api.elementary-data.com` | Elementary API base URL |
+| `elementary-env-id` | none | Elementary environment ID (UUID). Required when the repository is connected to more than one environment |
+| `post-inline-comments` | `true` | Post findings as review comments on the changed lines they refer to, in addition to the summary comment. Set to `false` for the summary comment only. Elementary posts these through your connected GitHub integration, so no extra token is needed. Findings that cannot be anchored to a line in the diff stay in the summary comment |
 
 ### Required secrets
 
